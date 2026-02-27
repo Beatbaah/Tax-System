@@ -1,25 +1,85 @@
 {
-  "short_name": "React App",
-  "name": "Create React App Sample",
+  "name": "BMA Tax Management System",
+  "short_name": "TaxSystem",
+  "description": "Bekwai Municipal Assembly Tax Management System",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#060d1a",
+  "theme_color": "#1a3a6b",
+  "scope": "/",
+  "lang": "en",
   "icons": [
     {
-      "src": "favicon.ico",
-      "sizes": "64x64 32x32 24x24 16x16",
-      "type": "image/x-icon"
+      "src": "icons/icon-72x72.png",
+      "sizes": "72x72",
+      "type": "image/png",
+      "purpose": "maskable any"
     },
     {
-      "src": "logo192.png",
+      "src": "icons/icon-96x96.png",
+      "sizes": "96x96",
       "type": "image/png",
-      "sizes": "192x192"
+      "purpose": "maskable any"
     },
     {
-      "src": "logo512.png",
+      "src": "icons/icon-128x128.png",
+      "sizes": "128x128",
       "type": "image/png",
-      "sizes": "512x512"
+      "purpose": "maskable any"
+    },
+    {
+      "src": "icons/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable any"
+    },
+    {
+      "src": "icons/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable any"
     }
-  ],
-  "start_url": ".",
-  "display": "standalone",
-  "theme_color": "#000000",
-  "background_color": "#ffffff"
+  ]
 }
+```
+
+Here's what each field means:
+
+- `name` — the full name shown during installation
+- `short_name` — the label shown under the icon on the home screen (keep it under 12 characters)
+- `display: "standalone"` — this is the key setting that removes the browser bar and makes it look like a native app
+- `background_color` — the color shown on the splash screen while the app loads
+- `theme_color` — the color of the status bar at the top of the phone
+- `orientation: "portrait"` — locks the app to portrait mode (remove this line if you want it to rotate)
+
+---
+
+## Phase 2: Create App Icons
+
+Your app needs icons in multiple sizes for different devices. Here's how to generate them all quickly.
+
+**Step 1 — Create one high quality icon**
+
+Design a 512x512 pixel PNG icon for your app. You can do this free at canva.com — make a square design with a dark navy background (`#060d1a`) and a gold/white tax or government symbol in the center.
+
+**Step 2 — Generate all sizes automatically**
+
+Go to pwabuilder.com/imageGenerator or realfavicongenerator.net. Upload your 512x512 image and it will generate all the sizes you need in one download.
+
+**Step 3 — Add icons to your project**
+
+1. Inside your `public/` folder, create a new folder called `icons`
+2. Copy all the downloaded icon files into `public/icons/`
+
+Your `public/` folder should now look like:
+```
+public/
+├── icons/
+│   ├── icon-72x72.png
+│   ├── icon-96x96.png
+│   ├── icon-128x128.png
+│   ├── icon-192x192.png
+│   └── icon-512x512.png
+├── index.html
+└── manifest.json

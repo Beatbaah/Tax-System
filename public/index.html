@@ -25,6 +25,26 @@
       Learn how to configure a non-root public URL by running `npm run build`.
     -->
     <title>React App</title>
+      <!-- This makes it look good on mobile screens -->
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
+
+  <!-- Status bar color on Android Chrome -->
+  <meta name="theme-color" content="#1a3a6b" />
+
+  <!-- Tells iOS this can be installed as an app -->
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="TaxSystem" />
+
+  <!-- App icons for iOS (Apple doesn't use manifest.json for icons) -->
+  <link rel="apple-touch-icon" sizes="192x192" href="/icons/icon-192x192.png" />
+  <link rel="apple-touch-icon" sizes="512x512" href="/icons/icon-512x512.png" />
+
+  <!-- Links to your manifest -->
+  <link rel="manifest" href="/manifest.json" />
+
+  <title>BMA Tax Management System</title>
+
   </head>
   <body>
     <noscript>You need to enable JavaScript to run this app.</noscript>
