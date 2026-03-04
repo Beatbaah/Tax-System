@@ -24,3 +24,4 @@ yarn-error.log*
 .DS_Store
 .env.local
 src/firebase.js
+src/firebase.js
