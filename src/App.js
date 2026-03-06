@@ -58,7 +58,7 @@ function Toast({toasts}){return <div style={{position:"fixed",top:16,right:16,zI
 function Modal({title,onClose,children,wide=false}){return <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.45)",zIndex:1000,display:"flex",alignItems:"center",justifyContent:"center",padding:16}} onClick={e=>e.target===e.currentTarget&&onClose()}><div style={{...card,width:"100%",maxWidth:wide?720:540,maxHeight:"92vh",overflowY:"auto"}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"18px 24px",borderBottom:"1px solid #f0f0f0"}}><h3 style={{margin:0,color:"#1a2e1a",fontSize:17,fontFamily:"Cormorant Garamond,serif"}}>{title}</h3><button onClick={onClose} style={{background:"none",border:"none",color:"#9ab89a",cursor:"pointer",padding:4}}><Ic n="x" s={20}/></button></div><div style={{padding:24}}>{children}</div></div></div>;}
 function StatCard({label,value,icon,color,sub}){return <div style={{...card,padding:"20px 22px",position:"relative",overflow:"hidden"}}><div style={{position:"absolute",top:0,right:0,width:70,height:70,background:color+"18",borderRadius:"0 14px 0 70px"}}/><div style={{position:"absolute",top:14,right:14,color}}><Ic n={icon} s={20}/></div><div style={{fontSize:11,color:"#7a9a78",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:8,fontWeight:700}}>{label}</div><div style={{fontSize:26,fontWeight:700,color:"#1a2e1a",fontFamily:"Cormorant Garamond,serif",lineHeight:1.2}}>{value}</div>{sub&&<div style={{fontSize:12,color:"#9ab89a",marginTop:5}}>{sub}</div>}</div>;}
 function AccessDenied({role}){return <div style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:80,textAlign:"center"}}><div style={{fontSize:52,marginBottom:16}}>🔒</div><h3 style={{fontFamily:"Cormorant Garamond,serif",color:"#1a2e1a",fontSize:22,margin:"0 0 8px"}}>Access Restricted</h3><p style={{color:"#4a7a58",fontSize:14,maxWidth:360,margin:0}}>Your role <strong>({ROLES[role]?.label})</strong> does not have permission to access this section.</p></div>;}
-function LoadingScreen({msg="Loading…"}){return <div style={{minHeight:"100vh",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",background:"#f0faf2",fontFamily:"Outfit,sans-serif"}}><style>{`@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;600&display=swap');@keyframes bar{0%{transform:translateX(-100%)}100%{transform:translateX(300%)}}`}</style>img src="/logo.png" alt="Bekwai Municipal Assembly" style={{ width: 56, height: 56, objectFit: "contain" }} /><div style={{fontSize:14,color:"#4a7a58",fontWeight:500,marginBottom:14}}>{msg}</div><div style={{width:44,height:3,background:"#c8e6c8",borderRadius:2,overflow:"hidden"}}><div style={{height:"100%",background:"#1a5c2a",borderRadius:2,animation:"bar 1.1s ease-in-out infinite"}}/></div></div>;}
+function LoadingScreen({msg="Loading…"}){return <div style={{minHeight:"100vh",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",background:"#f0faf2",fontFamily:"Outfit,sans-serif"}}><style>{`@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;600&display=swap');@keyframes bar{0%{transform:translateX(-100%)}100%{transform:translateX(300%)}}`}</style><img src="/logo.png" alt="Bekwai Municipal Assembly" style={{width:56,height:56,objectFit:"contain",marginBottom:16}}/><div style={{fontSize:14,color:"#4a7a58",fontWeight:500,marginBottom:14}}>{msg}</div><div style={{width:44,height:3,background:"#c8e6c8",borderRadius:2,overflow:"hidden"}}><div style={{height:"100%",background:"#1a5c2a",borderRadius:2,animation:"bar 1.1s ease-in-out infinite"}}/></div></div>;}
 function OfflineBanner({show}){if(!show)return null;return <div style={{background:"#374151",color:"#e5e7eb",textAlign:"center",padding:"7px 16px",fontSize:12,display:"flex",alignItems:"center",justifyContent:"center",gap:8}}><Ic n="wifi" s={13}/>You are offline — data will sync when connected</div>;}
 
 // ─── SESSION TIMEOUT BANNER ───────────────────────────────────────────────────
@@ -157,7 +157,7 @@ function LoginPage({addToast}){
     <style>{`@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Outfit:wght@400;500;600;700&display=swap');*{box-sizing:border-box}@keyframes fadeUp{from{transform:translateY(20px);opacity:0}to{transform:translateY(0);opacity:1}}@keyframes slideIn{from{transform:translateX(20px);opacity:0}to{transform:translateX(0);opacity:1}}@keyframes spin{to{transform:rotate(360deg)}}@keyframes bar{0%{transform:translateX(-100%)}100%{transform:translateX(300%)}}input:focus{border-color:#1a5c2a!important;box-shadow:0 0 0 3px rgba(26,92,42,0.1)!important;outline:none}`}</style>
     <div style={{width:"100%",maxWidth:420,animation:"fadeUp 0.5s ease"}}>
       <div style={{textAlign:"center",marginBottom:26}}>
-        <img src="/logo.png" alt="Bekwai Municipal Assembly" style={{ width: 56, height: 56, objectFit: "contain" }} />
+        <img src="/logo.png" alt="Bekwai Municipal Assembly" style={{width:66,height:66,objectFit:"contain",margin:"0 auto 14px",display:"block"}}/>
         <h1 style={{fontFamily:"Cormorant Garamond,serif",fontSize:23,color:"#1a2e1a",margin:"0 0 4px",fontWeight:700}}>Bekwai Municipal Assembly</h1>
         <p style={{color:"#4a7a58",fontSize:13,margin:0}}>Revenue Management System — Officer Portal</p>
       </div>
@@ -423,7 +423,6 @@ function Payments({payments,ratepayers,officers,me,addToast}){
         <tbody>{filtered.length===0?<tr><td colSpan={8} style={{textAlign:"center",padding:40,color:"#9ab89a"}}>No records found.</td></tr>:
           filtered.map(p=>{
             const rp=ratepayers.find(r=>r.id===p.ratepayerId);
-            const off=officers.find(o=>o.id===p.collectedBy);
             const s=ss(p);
             return <tr key={p.id} style={{borderTop:"1px solid #f5f5f5"}}>
               <td style={{padding:"10px 12px",color:"#1a5c2a",fontSize:11,fontFamily:"monospace"}}>{p.id}</td>
@@ -734,6 +733,7 @@ export default function App(){
       if(remaining<=0){clearInterval(countdownTimer.current);setSessionRemaining(0);}
       else{setSessionRemaining(remaining);}
     },1000);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   },[]);
 
   useEffect(()=>{
@@ -773,10 +773,9 @@ export default function App(){
   const pp={ratepayers,payments,officers,me,addToast};
 
   function Sidebar(){return <div style={{display:"flex",flexDirection:"column",height:"100%"}}>
-    {/* Logo */}
     <div style={{padding:"20px 18px 14px",borderBottom:"1px solid #e8f0e8"}}>
       <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:12}}>
-        <img src="/logo.png" alt="Bekwai Municipal Assembly" style={{ width: 42, height: 42, objectFit: "contain" }} />
+        <img src="/logo.png" alt="BMA" style={{width:40,height:40,objectFit:"contain",flexShrink:0}}/>
         <div style={{fontSize:13,fontWeight:700,color:"#1a2e1a",fontFamily:"Cormorant Garamond,serif",lineHeight:1.3}}>Bekwai Municipal<br/>Assembly</div>
       </div>
       <div style={{background:"#f0faf2",borderRadius:10,padding:"9px 11px",display:"flex",alignItems:"center",gap:8}}>
@@ -807,7 +806,7 @@ export default function App(){
       <SessionBanner remaining={sessionRemaining}/>
       <div className="mtb" style={{display:"none",padding:"12px 16px",background:"#fff",borderBottom:"1px solid #e8f0e8",alignItems:"center",gap:12,position:"sticky",top:0,zIndex:100,boxShadow:"0 2px 4px rgba(26,92,42,0.06)"}}>
         <button onClick={()=>setMobileOpen(true)} style={{background:"none",border:"none",color:"#4a7a58",cursor:"pointer",padding:4}}><Ic n="menu" s={22}/></button>
-         <img src={`${window.location.origin}/logo.png`} alt="BMA Logo" style={{width:42,height:42,objectFit:"contain"}}/>
+        <img src={`${window.location.origin}/logo.png`} alt="BMA Logo" style={{width:42,height:42,objectFit:"contain"}}/>
         <span style={{fontFamily:"Cormorant Garamond,serif",color:"#1a5c2a",fontWeight:700,fontSize:15}}>Bekwai Municipal Assembly</span>
       </div>
       <div className="pad" style={{flex:1,padding:28,maxWidth:1120,width:"100%",margin:"0 auto"}}>
