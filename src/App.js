@@ -142,11 +142,11 @@ function LoginPage({addToast}){
     setErr("");setLoading(true);
     try{
       const cred=await signInWithEmailAndPassword(auth,email,pass);
-      const snap=await getDoc(doc(db,"officers",cred.user.uid));
+      const snap=await getDoc(doc(db,"Officers",cred.user.uid));
       if(!snap.exists()){setErr("Officer profile not found. Contact the System Administrator.");await signOut(auth);setLoading(false);return;}
       const officer={id:snap.id,...snap.data()};
       if(officer.status==="suspended"){setErr("Your account has been suspended. Contact the System Administrator.");await signOut(auth);setLoading(false);return;}
-      await updateDoc(doc(db,"officers",officer.id),{lastLogin:today()});
+      await updateDoc(doc(db,"Officers",officer.id),{lastLogin:today()});
     }catch(e){
       setErr(e.code==="auth/user-not-found"||e.code==="auth/wrong-password"||e.code==="auth/invalid-credential"?"Invalid email or password.":e.code==="auth/too-many-requests"?"Too many failed attempts. Wait a few minutes.":e.code==="auth/network-request-failed"?"No internet connection.":"Login failed: "+e.message);
     }
@@ -176,7 +176,7 @@ function LoginPage({addToast}){
 // =============================================================================
 // DASHBOARD
 // =============================================================================
-function Dashboard({ratepayers,payments,officers,me}){
+function Dashboard({ratepayers,payments,Officers,me}){
   const paid=payments.filter(p=>p.status==="paid");
   const owing=payments.filter(p=>p.status==="owing");
   const totalR=paid.reduce((s,p)=>s+p.amount,0);
@@ -203,7 +203,7 @@ function Dashboard({ratepayers,payments,officers,me}){
       <StatCard label="Mobile Money"          value={fmt(momoTotal)}    icon="phone"  color="#7c3aed" sub="Digital payments"/>
       <StatCard label="Cash Payments"         value={fmt(cashTotal)}    icon="payments" color="#0369a1" sub="In-person"/>
       <StatCard label="Collection Rate"       value={`${rate}%`}        icon="check"  color="#0f766e" sub="Compliance"/>
-      {canDo(me,"iam")&&<StatCard label="Active Officers" value={officers.filter(o=>o.status==="active").length} icon="shield" color="#b45309" sub="System users"/>}
+      {canDo(me,"iam")&&<StatCard label="Active Officers" value={Officers.filter(o=>o.status==="active").length} icon="shield" color="#b45309" sub="System users"/>}
     </div>
 
     <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(280px,1fr))",gap:18,marginBottom:20}}>
@@ -227,7 +227,7 @@ function Dashboard({ratepayers,payments,officers,me}){
       {recent.length===0?<p style={{color:"#9ab89a",fontSize:13,margin:0}}>No payments recorded yet.</p>:
       <table style={{width:"100%",borderCollapse:"collapse",minWidth:560}}>
         <thead><tr>{["Ratepayer","Levy Type","Amount","Method","Date","Officer"].map(h=><th key={h} style={{textAlign:"left",padding:"8px 12px",fontSize:11,color:"#7a9a78",textTransform:"uppercase",letterSpacing:"0.06em",borderBottom:"1px solid #f0f0f0",fontWeight:700}}>{h}</th>)}</tr></thead>
-        <tbody>{recent.map(p=>{const rp=ratepayers.find(r=>r.id===p.ratepayerId);const off=officers.find(o=>o.id===p.collectedBy);return <tr key={p.id}><td style={{padding:"10px 12px",fontSize:13,color:"#2a5a38",borderBottom:"1px solid #f8f8f8"}}>{rp?.name}</td><td style={{padding:"10px 12px",fontSize:13,color:"#2a5a38",borderBottom:"1px solid #f8f8f8"}}>{p.type}</td><td style={{padding:"10px 12px",fontSize:13,color:"#16a34a",borderBottom:"1px solid #f8f8f8",fontWeight:700}}>{fmt(p.amount)}</td><td style={{padding:"10px 12px",fontSize:12,borderBottom:"1px solid #f8f8f8"}}>{p.paymentMethod==="Mobile Money"?<span style={{background:"rgba(124,58,237,0.1)",color:"#7c3aed",padding:"2px 8px",borderRadius:20,fontSize:11}}>📱 MoMo</span>:<span style={{background:"rgba(3,105,161,0.1)",color:"#0369a1",padding:"2px 8px",borderRadius:20,fontSize:11}}>💵 Cash</span>}</td><td style={{padding:"10px 12px",fontSize:13,color:"#9ab89a",borderBottom:"1px solid #f8f8f8"}}>{fmtDate(p.date)}</td><td style={{padding:"10px 12px",fontSize:13,color:"#2a5a38",borderBottom:"1px solid #f8f8f8"}}>{off?.name||"—"}</td></tr>;})}
+        <tbody>{recent.map(p=>{const rp=ratepayers.find(r=>r.id===p.ratepayerId);const off=Officers.find(o=>o.id===p.collectedBy);return <tr key={p.id}><td style={{padding:"10px 12px",fontSize:13,color:"#2a5a38",borderBottom:"1px solid #f8f8f8"}}>{rp?.name}</td><td style={{padding:"10px 12px",fontSize:13,color:"#2a5a38",borderBottom:"1px solid #f8f8f8"}}>{p.type}</td><td style={{padding:"10px 12px",fontSize:13,color:"#16a34a",borderBottom:"1px solid #f8f8f8",fontWeight:700}}>{fmt(p.amount)}</td><td style={{padding:"10px 12px",fontSize:12,borderBottom:"1px solid #f8f8f8"}}>{p.paymentMethod==="Mobile Money"?<span style={{background:"rgba(124,58,237,0.1)",color:"#7c3aed",padding:"2px 8px",borderRadius:20,fontSize:11}}>📱 MoMo</span>:<span style={{background:"rgba(3,105,161,0.1)",color:"#0369a1",padding:"2px 8px",borderRadius:20,fontSize:11}}>💵 Cash</span>}</td><td style={{padding:"10px 12px",fontSize:13,color:"#9ab89a",borderBottom:"1px solid #f8f8f8"}}>{fmtDate(p.date)}</td><td style={{padding:"10px 12px",fontSize:13,color:"#2a5a38",borderBottom:"1px solid #f8f8f8"}}>{off?.name||"—"}</td></tr>;})}
         </tbody>
       </table>}
     </div>
@@ -355,7 +355,7 @@ function Ratepayers({ratepayers,me,addToast}){
 // =============================================================================
 // PAYMENTS — with Mobile Money support
 // =============================================================================
-function Payments({payments,ratepayers,officers,me,addToast}){
+function Payments({payments,ratepayers,Officers,me,addToast}){
   const [search,setSearch]=useState("");
   const [filter,setFilter]=useState("all");
   const [showForm,setShowForm]=useState(false);
@@ -435,7 +435,7 @@ function Payments({payments,ratepayers,officers,me,addToast}){
               <td style={{padding:"10px 12px"}}><div style={{display:"flex",gap:5}}>
                 <button onClick={()=>openPrint(billHTML(p,rp))} style={{background:"rgba(180,83,9,0.08)",color:"#b45309",border:"none",borderRadius:6,padding:"5px 8px",cursor:"pointer",fontSize:11,display:"flex",alignItems:"center",gap:3}}><Ic n="print" s={11}/>Bill</button>
                 {p.status==="owing"&&editable&&<button onClick={()=>setPayModal(p)} style={{background:"rgba(22,163,74,0.1)",color:"#16a34a",border:"none",borderRadius:6,padding:"5px 8px",cursor:"pointer",fontSize:11,display:"flex",alignItems:"center",gap:3}}><Ic n="check" s={11}/>Pay</button>}
-                {p.status==="paid"&&<button onClick={()=>{const o2=officers.find(o=>o.id===p.collectedBy);openPrint(receiptHTML(p,rp,o2));}} style={{background:"rgba(37,99,235,0.08)",color:"#2563eb",border:"none",borderRadius:6,padding:"5px 8px",cursor:"pointer",fontSize:11,display:"flex",alignItems:"center",gap:3}}><Ic n="receipt" s={11}/>Receipt</button>}
+                {p.status==="paid"&&<button onClick={()=>{const o2=Officers.find(o=>o.id===p.collectedBy);openPrint(receiptHTML(p,rp,o2));}} style={{background:"rgba(37,99,235,0.08)",color:"#2563eb",border:"none",borderRadius:6,padding:"5px 8px",cursor:"pointer",fontSize:11,display:"flex",alignItems:"center",gap:3}}><Ic n="receipt" s={11}/>Receipt</button>}
               </div></td>
             </tr>;
           })}
@@ -495,7 +495,7 @@ function Payments({payments,ratepayers,officers,me,addToast}){
 // =============================================================================
 // RECEIPTS
 // =============================================================================
-function Receipts({payments,ratepayers,officers,addToast}){
+function Receipts({payments,ratepayers,Officers,addToast}){
   const [search,setSearch]=useState("");
   const [filterMethod,setFilterMethod]=useState("all");
   const paid=payments.filter(p=>p.status==="paid"&&p.receiptNo);
@@ -513,7 +513,7 @@ function Receipts({payments,ratepayers,officers,addToast}){
     </div>
     <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(260px,1fr))",gap:14}}>
       {filtered.length===0?<div style={{gridColumn:"1/-1",textAlign:"center",padding:60,color:"#9ab89a"}}>No receipts found.</div>:
-        filtered.map(p=>{const rp=ratepayers.find(r=>r.id===p.ratepayerId);const off=officers.find(o=>o.id===p.collectedBy);const isMomo=p.paymentMethod==="Mobile Money";return <div key={p.id} style={{...card,padding:18,border:`1px solid ${isMomo?"#ddd6fe":"#c8e6c8"}`}}>
+        filtered.map(p=>{const rp=ratepayers.find(r=>r.id===p.ratepayerId);const off=Officers.find(o=>o.id===p.collectedBy);const isMomo=p.paymentMethod==="Mobile Money";return <div key={p.id} style={{...card,padding:18,border:`1px solid ${isMomo?"#ddd6fe":"#c8e6c8"}`}}>
           <div style={{display:"flex",justifyContent:"space-between",marginBottom:10}}>
             <span style={{background:isMomo?"rgba(124,58,237,0.1)":"rgba(22,163,74,0.1)",color:isMomo?"#7c3aed":"#16a34a",padding:"3px 10px",borderRadius:20,fontSize:10,fontWeight:700}}>{isMomo?"📱 MOMO":"✓ CASH"}</span>
             <span style={{color:"#1a5c2a",fontSize:11,fontFamily:"monospace"}}>{p.receiptNo}</span>
@@ -566,31 +566,31 @@ function Defaulters({payments,ratepayers,addToast}){
 // =============================================================================
 // IAM
 // =============================================================================
-function IAMPage({officers,me,addToast}){
+function IAMPage({Officers,me,addToast}){
   const [search,setSearch]=useState("");
   const [showForm,setShowForm]=useState(false);
   const [editT,setEditT]=useState(null);
   const [showP,setShowP]=useState(false);
   const [saving,setSaving]=useState(false);
   const [form,setForm]=useState({name:"",email:"",phone:"",role:"COLLECTOR",ward:"Central Ward",staffId:"",password:"",confirm:""});
-  const filtered=officers.filter(o=>[o.name,o.email,o.staffId,o.ward,ROLES[o.role]?.label].some(f=>f?.toLowerCase().includes(search.toLowerCase())));
+  const filtered=Officers.filter(o=>[o.name,o.email,o.staffId,o.ward,ROLES[o.role]?.label].some(f=>f?.toLowerCase().includes(search.toLowerCase())));
   function openAdd(){setForm({name:"",email:"",phone:"",role:"COLLECTOR",ward:"Central Ward",staffId:"",password:"",confirm:""});setEditT(null);setShowForm(true);}
   function openEdit(o){setForm({...o,password:"",confirm:""});setEditT(o);setShowForm(true);}
 
   async function save(){
     if(!form.name||!form.email||!form.staffId)return addToast("Name, email and Staff ID required","error");
-    if(!editT&&!form.password)return addToast("Password required for new officers","error");
+    if(!editT&&!form.password)return addToast("Password required for new Officers","error");
     if(form.password&&form.password!==form.confirm)return addToast("Passwords do not match","error");
     if(form.password&&form.password.length<6)return addToast("Password must be at least 6 characters","error");
     setSaving(true);
     try{
       if(editT){
-        await updateDoc(doc(db,"officers",editT.id),{name:form.name,phone:form.phone,role:form.role,ward:form.ward,staffId:form.staffId});
+        await updateDoc(doc(db,"Officers",editT.id),{name:form.name,phone:form.phone,role:form.role,ward:form.ward,staffId:form.staffId});
         await logAudit(me.id,me.name,"OFFICER_UPDATED",`${form.name} updated by ${me.name}`);
         addToast(`${form.name} updated`,"success");
       }else{
         const cred=await createUserWithEmailAndPassword(auth,form.email,form.password);
-        await setDoc(doc(db,"officers",cred.user.uid),{id:cred.user.uid,name:form.name,email:form.email,phone:form.phone,role:form.role,ward:form.ward,staffId:form.staffId,status:"active",createdAt:today(),lastLogin:null});
+        await setDoc(doc(db,"Officers",cred.user.uid),{id:cred.user.uid,name:form.name,email:form.email,phone:form.phone,role:form.role,ward:form.ward,staffId:form.staffId,status:"active",createdAt:today(),lastLogin:null});
         await logAudit(me.id,me.name,"OFFICER_REGISTERED",`${form.name} (${form.role}) registered by ${me.name}`);
         addToast(`Officer ${form.name} registered!`,"success");
       }
@@ -602,7 +602,7 @@ function IAMPage({officers,me,addToast}){
   async function toggleStatus(o){
     if(o.id===me.id)return addToast("Cannot suspend your own account","error");
     const ns=o.status==="active"?"suspended":"active";
-    try{ await updateDoc(doc(db,"officers",o.id),{status:ns});await logAudit(me.id,me.name,"OFFICER_STATUS",`${o.name} ${ns} by ${me.name}`);addToast(`${o.name} ${ns}`,ns==="active"?"success":"info"); }
+    try{ await updateDoc(doc(db,"Officers",o.id),{status:ns});await logAudit(me.id,me.name,"OFFICER_STATUS",`${o.name} ${ns} by ${me.name}`);addToast(`${o.name} ${ns}`,ns==="active"?"success":"info"); }
     catch(e){ addToast("Failed: "+e.message,"error"); }
   }
 
@@ -618,9 +618,9 @@ function IAMPage({officers,me,addToast}){
       <button onClick={openAdd} style={{display:"flex",alignItems:"center",gap:8,background:"linear-gradient(135deg,#1a5c2a,#2d8a45)",color:"#fff",border:"none",borderRadius:10,padding:"11px 18px",cursor:"pointer",fontSize:14,fontWeight:600,fontFamily:"inherit"}}><Ic n="plus" s={16}/>Register Officer</button>
     </div>
     <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(172px,1fr))",gap:12,marginBottom:22}}>
-      {Object.entries(ROLES).map(([key,role])=>{const cnt=officers.filter(o=>o.role===key&&o.status==="active").length;return <div key={key} style={{...card,padding:"13px 15px",border:`1px solid ${role.color}25`}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:5}}><span style={{background:role.bg,color:role.color,padding:"2px 8px",borderRadius:20,fontSize:10,fontWeight:700,whiteSpace:"nowrap"}}>{role.label}</span><span style={{fontSize:20,fontWeight:700,color:"#1a2e1a",fontFamily:"Cormorant Garamond,serif"}}>{cnt}</span></div><div style={{fontSize:11,color:"#7a9a78",lineHeight:1.4}}>{role.description}</div></div>;})}
+      {Object.entries(ROLES).map(([key,role])=>{const cnt=Officers.filter(o=>o.role===key&&o.status==="active").length;return <div key={key} style={{...card,padding:"13px 15px",border:`1px solid ${role.color}25`}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:5}}><span style={{background:role.bg,color:role.color,padding:"2px 8px",borderRadius:20,fontSize:10,fontWeight:700,whiteSpace:"nowrap"}}>{role.label}</span><span style={{fontSize:20,fontWeight:700,color:"#1a2e1a",fontFamily:"Cormorant Garamond,serif"}}>{cnt}</span></div><div style={{fontSize:11,color:"#7a9a78",lineHeight:1.4}}>{role.description}</div></div>;})}
     </div>
-    <div style={{position:"relative",marginBottom:16}}><div style={{position:"absolute",left:13,top:"50%",transform:"translateY(-50%)",color:"#9ab89a"}}><Ic n="search" s={15}/></div><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search officers…" style={{...inp,paddingLeft:38}}/></div>
+    <div style={{position:"relative",marginBottom:16}}><div style={{position:"absolute",left:13,top:"50%",transform:"translateY(-50%)",color:"#9ab89a"}}><Ic n="search" s={15}/></div><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search Officers…" style={{...inp,paddingLeft:38}}/></div>
     <div style={{...card,overflow:"hidden",overflowX:"auto"}}>
       <table style={{width:"100%",borderCollapse:"collapse",minWidth:820}}>
         <thead><tr style={{background:"#f0faf2"}}>{["Officer","Staff ID","Role","Ward","Status","Last Login","Actions"].map(h=><th key={h} style={{textAlign:"left",padding:"12px 14px",fontSize:11,color:"#4a7a58",textTransform:"uppercase",letterSpacing:"0.07em",fontWeight:700}}>{h}</th>)}</tr></thead>
@@ -673,7 +673,7 @@ export default function App(){
   const [me,setMe]               = useState(null);
   const [authReady,setAuthReady] = useState(false);
   const [dataLoading,setDataLoading] = useState(false);
-  const [officers,setOfficers]   = useState([]);
+  const [Officers,setOfficers]   = useState([]);
   const [ratepayers,setRatepayers] = useState([]);
   const [payments,setPayments]   = useState([]);
   const [toasts,setToasts]       = useState([]);
@@ -696,7 +696,7 @@ export default function App(){
     const unsub=onAuthStateChanged(auth,async user=>{
       if(user){
         try{
-          const snap=await getDoc(doc(db,"officers",user.uid));
+          const snap=await getDoc(doc(db,"Officers",user.uid));
           if(snap.exists()&&snap.data().status==="active"){setMe({id:snap.id,...snap.data()});setDataLoading(true);}
           else{await signOut(auth);}
         }catch(e){console.warn("Profile load failed:",e.message);}
@@ -714,7 +714,7 @@ export default function App(){
     if(!me)return;
     const u1=onSnapshot(collection(db,"ratepayers"),snap=>{setRatepayers(snap.docs.map(d=>({id:d.id,...d.data()})));setDataLoading(false);});
     const u2=onSnapshot(query(collection(db,"payments"),orderBy("dueDate","desc")),snap=>{setPayments(snap.docs.map(d=>({id:d.id,...d.data()})));});
-    const u3=onSnapshot(collection(db,"officers"),snap=>{setOfficers(snap.docs.map(d=>({id:d.id,...d.data()})));});
+    const u3=onSnapshot(collection(db,"Officers"),snap=>{setOfficers(snap.docs.map(d=>({id:d.id,...d.data()})));});
     return()=>{u1();u2();u3();};
   },[me]);
 
@@ -770,7 +770,7 @@ export default function App(){
     {id:"iam",       icon:"shield",   label:"Officers",      perm:"iam"},
   ].filter(item=>canDo(me,item.perm));
 
-  const pp={ratepayers,payments,officers,me,addToast};
+  const pp={ratepayers,payments,Officers,me,addToast};
 
   function Sidebar(){return <div style={{display:"flex",flexDirection:"column",height:"100%"}}>
     <div style={{padding:"20px 18px 14px",borderBottom:"1px solid #e8f0e8"}}>
