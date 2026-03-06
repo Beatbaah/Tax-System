@@ -1,13 +1,7 @@
-// =============================================================================
-// src/firebase.js  —  Place this file at src/firebase.js
-// =============================================================================
-// Replace the placeholder values below with YOUR actual Firebase config.
-// Get them from: Firebase Console → Project Settings → General → Your apps
-// =============================================================================
-
-import { initializeApp }                          from "firebase/app";
-import { getAuth }                                from "firebase/auth";
+import { initializeApp }                            from "firebase/app";
+import { getAuth }                                  from "firebase/auth";
 import { getFirestore, enableIndexedDbPersistence } from "firebase/firestore";
+import { getStorage }                               from "firebase/storage";
 
 const firebaseConfig = {
   apiKey:            process.env.REACT_APP_FIREBASE_API_KEY,
@@ -20,16 +14,11 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 
-export const auth = getAuth(app);
-export const db   = getFirestore(app);
+export const auth    = getAuth(app);
+export const db      = getFirestore(app);
+export const storage = getStorage(app);
 
-// One line gives you full offline support.
-// Firebase caches all data locally, lets officers work without internet,
-// then syncs everything automatically the moment connection returns.
 enableIndexedDbPersistence(db).catch(err => {
-  if (err.code === "failed-precondition") {
-    console.warn("Offline persistence: only one browser tab allowed at a time.");
-  } else if (err.code === "unimplemented") {
-    console.warn("This browser does not support offline persistence.");
-  }
+  if (err.code === "failed-precondition") console.warn("Offline persistence: one tab only.");
+  else if (err.code === "unimplemented")  console.warn("Browser does not support offline persistence.");
 });
