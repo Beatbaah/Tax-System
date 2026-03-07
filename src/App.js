@@ -94,11 +94,11 @@ function LoginPage({addToast}){
     setErr("");setLoading(true);
     try{
       const cred=await signInWithEmailAndPassword(auth,email,pass);
-      const snap=await getDoc(doc(db,"Officers",cred.user.uid));
+      const snap=await getDoc(doc(db,"officers",cred.user.uid));
       if(!snap.exists()){setErr("Officer profile not found. Contact the System Administrator.");await signOut(auth);setLoading(false);return;}
       const officer={id:snap.id,...snap.data()};
       if(officer.status==="suspended"){setErr("Your account has been suspended. Contact the System Administrator.");await signOut(auth);setLoading(false);return;}
-      await updateDoc(doc(db,"Officers",officer.id),{lastLogin:today()});
+      await updateDoc(doc(db,"officers",officer.id),{lastLogin:today()});
     }catch(e){setErr(e.code==="auth/user-not-found"||e.code==="auth/wrong-password"||e.code==="auth/invalid-credential"?"Invalid email or password.":e.code==="auth/too-many-requests"?"Too many failed attempts. Wait a few minutes.":e.code==="auth/network-request-failed"?"No internet connection.":"Login failed: "+e.message);}
     setLoading(false);
   }
@@ -106,8 +106,18 @@ function LoginPage({addToast}){
   async function doReset(){
     if(!email)return setErr("Enter your email address first.");
     setLoading(true);
-    try{await sendPasswordResetEmail(auth,email);setResetSent(true);setErr("");}
-    catch(e){setErr("Could not send reset email: "+e.message);}
+    try{
+      const actionCodeSettings={url:window.location.origin+"/?resetPassword=1",handleCodeInApp:false};
+      await sendPasswordResetEmail(auth,email.trim().toLowerCase(),actionCodeSettings);
+      setResetSent(true);setErr("");
+    }catch(e){
+      const msg=e.code==="auth/user-not-found"?"No account found with this email.":
+        e.code==="auth/invalid-email"?"Enter a valid email address.":
+        e.code==="auth/too-many-requests"?"Too many attempts. Wait a few minutes.":
+        e.code==="auth/network-request-failed"?"No internet connection.":
+        "Could not send reset email. Contact your System Administrator.";
+      setErr(msg);
+    }
     setLoading(false);
   }
 
@@ -144,7 +154,7 @@ function LoginPage({addToast}){
 // =============================================================================
 // DASHBOARD with date filtering
 // =============================================================================
-function Dashboard({ratepayers,payments,Officers,me,setTab}){
+function Dashboard({ratepayers,payments,officers,me,setTab}){
   const [dateFrom,setDateFrom]=useState("");
   const [dateTo,setDateTo]=useState("");
 
@@ -184,7 +194,7 @@ function Dashboard({ratepayers,payments,Officers,me,setTab}){
       <StatCard label="Mobile Money"       value={fmt(momoTotal)} icon="phone"  color="#7c3aed" sub="Digital payments"/>
       <StatCard label="Cash Payments"      value={fmt(cashTotal)} icon="payments" color="#0369a1" sub="In-person"/>
       <StatCard label="Collection Rate"    value={`${rate}%`}   icon="check"    color="#0f766e" sub="Compliance"/>
-      {canDo(me,"iam")&&<StatCard label="Active Officers" value={Officers.filter(o=>o.status==="active").length} icon="shield" color="#b45309" sub="System users" onClick={()=>setTab("iam")}/>}
+      {canDo(me,"iam")&&<StatCard label="Active Officers" value={officers.filter(o=>o.status==="active").length} icon="shield" color="#b45309" sub="System users" onClick={()=>setTab("iam")}/>}
     </div>
 
     <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(280px,1fr))",gap:18,marginBottom:20}}>
@@ -322,7 +332,7 @@ function CancelModal({bill,saving,onClose,onConfirm}){
 // =============================================================================
 // PAYMENTS — issue bills, record payments, cancel bills, bulk issue
 // =============================================================================
-function Payments({payments,ratepayers,Officers,me,addToast}){
+function Payments({payments,ratepayers,officers,me,addToast}){
   const [search,setSearch]=useState("");const [filter,setFilter]=useState("all");const [dateFrom,setDateFrom]=useState("");const [dateTo,setDateTo]=useState("");const [showForm,setShowForm]=useState(false);const [showBulk,setShowBulk]=useState(false);const [payModal,setPayModal]=useState(null);const [cancelModal,setCancelModal]=useState(null);const [saving,setSaving]=useState(false);const [form,setForm]=useState({ratepayerId:"",type:"Property Rate",period:"",amount:"",dueDate:""});const [payMethod,setPayMethod]=useState("Cash");const [momoNetwork,setMomoNetwork]=useState("MTN Mobile Money");const [momoPhone,setMomoPhone]=useState("");const [momoRef,setMomoRef]=useState("");const [bulkForm,setBulkForm]=useState({ward:"All Wards",category:"All",type:"Property Rate",period:"",amount:"",dueDate:""});const editable=me.role!=="AUDITOR";
 
   const filtered=payments.filter(p=>{
@@ -388,7 +398,7 @@ function Payments({payments,ratepayers,Officers,me,addToast}){
     setSaving(false);
   }
 
-  function doExport(){exportCSV(filtered.map(p=>{const rp=ratepayers.find(r=>r.id===p.ratepayerId);const off=Officers.find(o=>o.id===p.collectedBy);return{BillRef:p.id,Ratepayer:rp?.name||"",PIN:rp?.pin||"",Ward:rp?.ward||"",LevyType:p.type,Period:p.period,Amount:p.amount,DueDate:p.dueDate,Status:p.status,PaymentDate:p.date||"",ReceiptNo:p.receiptNo||"",Method:p.paymentMethod||"",CollectedBy:off?.name||""}}),"payments.csv");addToast("Exported to CSV","success");}
+  function doExport(){exportCSV(filtered.map(p=>{const rp=ratepayers.find(r=>r.id===p.ratepayerId);const off=officers.find(o=>o.id===p.collectedBy);return{BillRef:p.id,Ratepayer:rp?.name||"",PIN:rp?.pin||"",Ward:rp?.ward||"",LevyType:p.type,Period:p.period,Amount:p.amount,DueDate:p.dueDate,Status:p.status,PaymentDate:p.date||"",ReceiptNo:p.receiptNo||"",Method:p.paymentMethod||"",CollectedBy:off?.name||""}}),"payments.csv");addToast("Exported to CSV","success");}
 
   function ss(p){const ov=p.dueDate<today()&&p.status==="owing";if(p.status==="paid")return{bg:"rgba(22,163,74,0.1)",color:"#16a34a",label:"PAID"};if(p.status==="cancelled")return{bg:"rgba(107,114,128,0.1)",color:"#6b7280",label:"CANCELLED"};if(ov)return{bg:"rgba(239,68,68,0.1)",color:"#ef4444",label:"OVERDUE"};return{bg:"rgba(217,119,6,0.1)",color:"#d97706",label:"OWING"};}
 
@@ -424,7 +434,7 @@ function Payments({payments,ratepayers,Officers,me,addToast}){
             <td style={{padding:"10px 12px"}}><div style={{display:"flex",gap:4,flexWrap:"wrap"}}>
               <button onClick={()=>openPrint(billHTML(p,rp))} style={{background:"rgba(180,83,9,0.08)",color:"#b45309",border:"none",borderRadius:6,padding:"5px 7px",cursor:"pointer",fontSize:11,display:"flex",alignItems:"center",gap:2}}><Ic n="print" s={11}/>Bill</button>
               {p.status==="owing"&&editable&&<button onClick={()=>setPayModal(p)} style={{background:"rgba(22,163,74,0.1)",color:"#16a34a",border:"none",borderRadius:6,padding:"5px 7px",cursor:"pointer",fontSize:11,display:"flex",alignItems:"center",gap:2}}><Ic n="check" s={11}/>Pay</button>}
-              {p.status==="paid"&&<button onClick={()=>{const o2=Officers.find(o=>o.id===p.collectedBy);openPrint(receiptHTML(p,rp,o2));}} style={{background:"rgba(37,99,235,0.08)",color:"#2563eb",border:"none",borderRadius:6,padding:"5px 7px",cursor:"pointer",fontSize:11,display:"flex",alignItems:"center",gap:2}}><Ic n="receipt" s={11}/>Receipt</button>}
+              {p.status==="paid"&&<button onClick={()=>{const o2=officers.find(o=>o.id===p.collectedBy);openPrint(receiptHTML(p,rp,o2));}} style={{background:"rgba(37,99,235,0.08)",color:"#2563eb",border:"none",borderRadius:6,padding:"5px 7px",cursor:"pointer",fontSize:11,display:"flex",alignItems:"center",gap:2}}><Ic n="receipt" s={11}/>Receipt</button>}
               {p.status==="owing"&&(me.role==="SUPER_ADMIN"||me.role==="REVENUE_MANAGER")&&<button onClick={()=>setCancelModal(p)} style={{background:"rgba(239,68,68,0.08)",color:"#ef4444",border:"none",borderRadius:6,padding:"5px 7px",cursor:"pointer",fontSize:11,display:"flex",alignItems:"center",gap:2}}><Ic n="x" s={11}/>Cancel</button>}
             </div></td>
           </tr>;})}
@@ -435,7 +445,7 @@ function Payments({payments,ratepayers,Officers,me,addToast}){
     {showForm&&<Modal title="Issue Demand Notice" onClose={()=>setShowForm(false)}>
       <Fld label="Ratepayer *"><select style={sel} value={form.ratepayerId} onChange={e=>setForm(p=>({...p,ratepayerId:e.target.value}))}><option value="">— Select Ratepayer —</option>{ratepayers.map(r=><option key={r.id} value={r.id}>{r.name} — {r.ward} ({r.pin})</option>)}</select></Fld>
       <Fld label="Levy Type"><select style={sel} value={form.type} onChange={e=>setForm(p=>({...p,type:e.target.value}))}>{LEVY_TYPES.map(t=><option key={t}>{t}</option>)}</select></Fld>
-      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}><Fld label="Period *"><input style={inp} value={form.period} onChange={e=>setForm(p=>({...p,period:e.target.value}))} placeholder="e.g. Q2 2024"/></Fld><Fld label="Amount (GH₵) *"><input style={inp} type="number" value={form.amount} onChange={e=>setForm(p=>({...p,amount:e.target.value}))} placeholder="0.00"/></Fld></div>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}><Fld label="Period *"><input style={inp} value={form.period} onChange={e=>setForm(p=>({...p,period:e.target.value}))} placeholder="e.g. Q2 2026"/></Fld><Fld label="Amount (GH₵) *"><input style={inp} type="number" value={form.amount} onChange={e=>setForm(p=>({...p,amount:e.target.value}))} placeholder="0.00"/></Fld></div>
       <Fld label="Due Date"><input style={inp} type="date" value={form.dueDate} onChange={e=>setForm(p=>({...p,dueDate:e.target.value}))}/></Fld>
       <div style={{display:"flex",gap:12,marginTop:8}}><button onClick={()=>setShowForm(false)} style={{flex:1,padding:"11px",background:"#f8faf8",border:"1px solid #e0ede0",borderRadius:8,color:"#4a7a58",cursor:"pointer",fontSize:14,fontFamily:"inherit"}}>Cancel</button><button onClick={issueBill} disabled={saving} style={{flex:2,padding:"11px",background:saving?"#9ab89a":"linear-gradient(135deg,#1a5c2a,#2d8a45)",border:"none",borderRadius:8,color:"#fff",cursor:saving?"not-allowed":"pointer",fontSize:14,fontWeight:600,fontFamily:"inherit"}}>{saving?"Saving…":"Issue Notice"}</button></div>
     </Modal>}
@@ -471,11 +481,11 @@ function Payments({payments,ratepayers,Officers,me,addToast}){
 // =============================================================================
 // RECEIPTS
 // =============================================================================
-function Receipts({payments,ratepayers,Officers,addToast}){
+function Receipts({payments,ratepayers,officers,addToast}){
   const [search,setSearch]=useState("");const [filterMethod,setFilterMethod]=useState("all");const [dateFrom,setDateFrom]=useState("");const [dateTo,setDateTo]=useState("");
   const paid=payments.filter(p=>p.status==="paid"&&p.receiptNo);
   const filtered=paid.filter(p=>{const rp=ratepayers.find(r=>r.id===p.ratepayerId);const matchSearch=[rp?.name,p.receiptNo,p.type,p.period,rp?.ward].some(f=>f?.toLowerCase().includes(search.toLowerCase()));const matchMethod=filterMethod==="all"||(filterMethod==="momo"&&p.paymentMethod==="Mobile Money")||(filterMethod==="cash"&&p.paymentMethod!=="Mobile Money");const matchDate=(!dateFrom||p.date>=dateFrom)&&(!dateTo||p.date<=dateTo);return matchSearch&&matchMethod&&matchDate;});
-  function doExport(){exportCSV(filtered.map(p=>{const rp=ratepayers.find(r=>r.id===p.ratepayerId);const off=Officers.find(o=>o.id===p.collectedBy);return{ReceiptNo:p.receiptNo,Ratepayer:rp?.name||"",PIN:rp?.pin||"",Ward:rp?.ward||"",LevyType:p.type,Period:p.period,Amount:p.amount,Date:p.date,Method:p.paymentMethod||"Cash",MoMoNetwork:p.momoNetwork||"",MoMoPhone:p.momoPhone||"",MoMoRef:p.momoRef||"",CollectedBy:off?.name||""}}),"receipts.csv");addToast("Receipts exported","success");}
+  function doExport(){exportCSV(filtered.map(p=>{const rp=ratepayers.find(r=>r.id===p.ratepayerId);const off=officers.find(o=>o.id===p.collectedBy);return{ReceiptNo:p.receiptNo,Ratepayer:rp?.name||"",PIN:rp?.pin||"",Ward:rp?.ward||"",LevyType:p.type,Period:p.period,Amount:p.amount,Date:p.date,Method:p.paymentMethod||"Cash",MoMoNetwork:p.momoNetwork||"",MoMoPhone:p.momoPhone||"",MoMoRef:p.momoRef||"",CollectedBy:off?.name||""}}),"receipts.csv");addToast("Receipts exported","success");}
   return <div>
     <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:24,flexWrap:"wrap",gap:12}}>
       <div><h2 style={{color:"#1a2e1a",fontFamily:"Cormorant Garamond,serif",margin:"0 0 4px",fontSize:26}}>Revenue Receipts</h2><p style={{color:"#4a7a58",margin:0,fontSize:13}}>{paid.length} receipts · {paid.filter(p=>p.paymentMethod==="Mobile Money").length} via MoMo</p></div>
@@ -488,7 +498,7 @@ function Receipts({payments,ratepayers,Officers,addToast}){
       <input type="date" value={dateTo} onChange={e=>setDateTo(e.target.value)} style={{...inp,width:"auto",fontSize:12,padding:"10px"}}/>
     </div>
     <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(260px,1fr))",gap:14}}>
-      {filtered.length===0?<div style={{gridColumn:"1/-1",textAlign:"center",padding:60,color:"#9ab89a"}}>No receipts found.</div>:filtered.map(p=>{const rp=ratepayers.find(r=>r.id===p.ratepayerId);const off=Officers.find(o=>o.id===p.collectedBy);const isMomo=p.paymentMethod==="Mobile Money";return <div key={p.id} style={{...card,padding:18,border:`1px solid ${isMomo?"#ddd6fe":"#c8e6c8"}`}}>
+      {filtered.length===0?<div style={{gridColumn:"1/-1",textAlign:"center",padding:60,color:"#9ab89a"}}>No receipts found.</div>:filtered.map(p=>{const rp=ratepayers.find(r=>r.id===p.ratepayerId);const off=officers.find(o=>o.id===p.collectedBy);const isMomo=p.paymentMethod==="Mobile Money";return <div key={p.id} style={{...card,padding:18,border:`1px solid ${isMomo?"#ddd6fe":"#c8e6c8"}`}}>
         <div style={{display:"flex",justifyContent:"space-between",marginBottom:10}}><span style={{background:isMomo?"rgba(124,58,237,0.1)":"rgba(22,163,74,0.1)",color:isMomo?"#7c3aed":"#16a34a",padding:"3px 10px",borderRadius:20,fontSize:10,fontWeight:700}}>{isMomo?"📱 MOMO":"✓ CASH"}</span><span style={{color:"#1a5c2a",fontSize:11,fontFamily:"monospace"}}>{p.receiptNo}</span></div>
         <div style={{color:"#1a2e1a",fontSize:15,fontWeight:700,marginBottom:2}}>{rp?.name}</div>
         <div style={{color:"#7a9a78",fontSize:12}}>{p.type} · {p.period}</div>
@@ -534,7 +544,7 @@ function Defaulters({payments,ratepayers,addToast}){
 // =============================================================================
 // REPORTS — revenue summary with export
 // =============================================================================
-function Reports({payments,ratepayers,Officers,me}){
+function Reports({payments,ratepayers,officers,me}){
   const [dateFrom,setDateFrom]=useState(new Date().getFullYear()+"-01-01");
   const [dateTo,setDateTo]=useState(today());
   const [groupBy,setGroupBy]=useState("type");
@@ -549,7 +559,7 @@ function Reports({payments,ratepayers,Officers,me}){
     let key;
     if(groupBy==="type")key=p.type;
     else if(groupBy==="ward"){const rp=ratepayers.find(r=>r.id===p.ratepayerId);key=rp?.ward||"Unknown";}
-    else if(groupBy==="officer"){const off=Officers.find(o=>o.id===p.collectedBy);key=off?.name||"Unknown";}
+    else if(groupBy==="officer"){const off=officers.find(o=>o.id===p.collectedBy);key=off?.name||"Unknown";}
     else if(groupBy==="month")key=p.date?.substr(0,7)||"Unknown";
     else key=p.paymentMethod||"Cash";
     if(!grouped[key])grouped[key]={total:0,count:0,momo:0};
@@ -634,21 +644,21 @@ function AuditPage({me}){
 // =============================================================================
 // IAM
 // =============================================================================
-function IAMPage({Officers,me,addToast}){
+function IAMPage({officers,me,addToast}){
   const [search,setSearch]=useState("");const [showForm,setShowForm]=useState(false);const [editT,setEditT]=useState(null);const [showP,setShowP]=useState(false);const [saving,setSaving]=useState(false);const [resetModal,setResetModal]=useState(null);const [form,setForm]=useState({name:"",email:"",phone:"",role:"COLLECTOR",ward:"Central Ward",staffId:"",password:"",confirm:""});
-  const filtered=Officers.filter(o=>[o.name,o.email,o.staffId,o.ward,ROLES[o.role]?.label].some(f=>f?.toLowerCase().includes(search.toLowerCase())));
+  const filtered=officers.filter(o=>[o.name,o.email,o.staffId,o.ward,ROLES[o.role]?.label].some(f=>f?.toLowerCase().includes(search.toLowerCase())));
   function openAdd(){setForm({name:"",email:"",phone:"",role:"COLLECTOR",ward:"Central Ward",staffId:"",password:"",confirm:""});setEditT(null);setShowForm(true);}
   function openEdit(o){setForm({...o,password:"",confirm:""});setEditT(o);setShowForm(true);}
 
   async function save(){
     if(!form.name||!form.email||!form.staffId)return addToast("Name, email and Staff ID required","error");
-    if(!editT&&!form.password)return addToast("Password required for new Officers","error");
+    if(!editT&&!form.password)return addToast("Password required for new officers","error");
     if(form.password&&form.password!==form.confirm)return addToast("Passwords do not match","error");
     if(form.password&&form.password.length<6)return addToast("Password must be at least 6 characters","error");
     setSaving(true);
     try{
-      if(editT){await updateDoc(doc(db,"Officers",editT.id),{name:form.name,phone:form.phone,role:form.role,ward:form.ward,staffId:form.staffId});await logAudit(me.id,me.name,"OFFICER_UPDATED",`${form.name} updated by ${me.name}`);addToast(`${form.name} updated`,"success");}
-      else{const cred=await createUserWithEmailAndPassword(auth,form.email,form.password);await setDoc(doc(db,"Officers",cred.user.uid),{id:cred.user.uid,name:form.name,email:form.email,phone:form.phone,role:form.role,ward:form.ward,staffId:form.staffId,status:"active",createdAt:today(),lastLogin:null});await logAudit(me.id,me.name,"OFFICER_REGISTERED",`${form.name} (${form.role}) registered by ${me.name}`);addToast(`Officer ${form.name} registered!`,"success");}
+      if(editT){await updateDoc(doc(db,"officers",editT.id),{name:form.name,phone:form.phone,role:form.role,ward:form.ward,staffId:form.staffId});await logAudit(me.id,me.name,"OFFICER_UPDATED",`${form.name} updated by ${me.name}`);addToast(`${form.name} updated`,"success");}
+      else{const cred=await createUserWithEmailAndPassword(auth,form.email,form.password);await setDoc(doc(db,"officers",cred.user.uid),{id:cred.user.uid,name:form.name,email:form.email,phone:form.phone,role:form.role,ward:form.ward,staffId:form.staffId,status:"active",createdAt:today(),lastLogin:null});await logAudit(me.id,me.name,"OFFICER_REGISTERED",`${form.name} (${form.role}) registered by ${me.name}`);addToast(`Officer ${form.name} registered!`,"success");}
       setShowForm(false);
     }catch(e){addToast(e.code==="auth/email-already-in-use"?"Email already exists":"Failed: "+e.message,"error");}
     setSaving(false);
@@ -657,13 +667,23 @@ function IAMPage({Officers,me,addToast}){
   async function toggleStatus(o){
     if(o.id===me.id)return addToast("Cannot suspend your own account","error");
     const ns=o.status==="active"?"suspended":"active";
-    try{await updateDoc(doc(db,"Officers",o.id),{status:ns});await logAudit(me.id,me.name,"OFFICER_STATUS",`${o.name} ${ns} by ${me.name}`);addToast(`${o.name} ${ns}`,ns==="active"?"success":"info");}
+    try{await updateDoc(doc(db,"officers",o.id),{status:ns});await logAudit(me.id,me.name,"OFFICER_STATUS",`${o.name} ${ns} by ${me.name}`);addToast(`${o.name} ${ns}`,ns==="active"?"success":"info");}
     catch(e){addToast("Failed: "+e.message,"error");}
   }
 
   async function sendReset(email){
-    try{await sendPasswordResetEmail(auth,email);await logAudit(me.id,me.name,"PASSWORD_RESET",`Reset email sent to ${email} by ${me.name}`);addToast(`Password reset email sent to ${email}`,"success");setResetModal(null);}
-    catch(e){addToast("Failed to send reset: "+e.message,"error");}
+    try{
+      const actionCodeSettings={url:window.location.origin+"/?resetPassword=1",handleCodeInApp:false};
+      await sendPasswordResetEmail(auth,email.trim().toLowerCase(),actionCodeSettings);
+      await logAudit(me.id,me.name,"PASSWORD_RESET",`Reset email sent to ${email} by ${me.name}`);
+      addToast(`Password reset email sent to ${email}`,"success");
+      setResetModal(null);
+    }catch(e){
+      const msg=e.code==="auth/user-not-found"?"No account found with this email.":
+        e.code==="auth/too-many-requests"?"Too many attempts. Wait a few minutes.":
+        "Failed to send reset email. Check the email address and try again.";
+      addToast(msg,"error");
+    }
   }
 
   return <div>
@@ -671,9 +691,9 @@ function IAMPage({Officers,me,addToast}){
       <div><h2 style={{color:"#1a2e1a",fontFamily:"Cormorant Garamond,serif",margin:"0 0 4px",fontSize:26}}>Officer Management</h2><p style={{color:"#4a7a58",margin:0,fontSize:13}}>Firebase Auth · Real accounts · Real-time sync</p></div>
       <button onClick={openAdd} style={btn()}><Ic n="plus" s={14}/>Register Officer</button>
     </div>
-    <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(172px,1fr))",gap:12,marginBottom:22}}>{Object.entries(ROLES).map(([key,role])=>{const cnt=Officers.filter(o=>o.role===key&&o.status==="active").length;return <div key={key} style={{...card,padding:"13px 15px",border:`1px solid ${role.color}25`}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:5}}><span style={{background:role.bg,color:role.color,padding:"2px 8px",borderRadius:20,fontSize:10,fontWeight:700,whiteSpace:"nowrap"}}>{role.label}</span><span style={{fontSize:20,fontWeight:700,color:"#1a2e1a",fontFamily:"Cormorant Garamond,serif"}}>{cnt}</span></div><div style={{fontSize:11,color:"#7a9a78",lineHeight:1.4}}>{role.description}</div></div>;})}
+    <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(172px,1fr))",gap:12,marginBottom:22}}>{Object.entries(ROLES).map(([key,role])=>{const cnt=officers.filter(o=>o.role===key&&o.status==="active").length;return <div key={key} style={{...card,padding:"13px 15px",border:`1px solid ${role.color}25`}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:5}}><span style={{background:role.bg,color:role.color,padding:"2px 8px",borderRadius:20,fontSize:10,fontWeight:700,whiteSpace:"nowrap"}}>{role.label}</span><span style={{fontSize:20,fontWeight:700,color:"#1a2e1a",fontFamily:"Cormorant Garamond,serif"}}>{cnt}</span></div><div style={{fontSize:11,color:"#7a9a78",lineHeight:1.4}}>{role.description}</div></div>;})}
     </div>
-    <div style={{position:"relative",marginBottom:16}}><div style={{position:"absolute",left:13,top:"50%",transform:"translateY(-50%)",color:"#9ab89a"}}><Ic n="search" s={15}/></div><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search Officers…" style={{...inp,paddingLeft:38}}/></div>
+    <div style={{position:"relative",marginBottom:16}}><div style={{position:"absolute",left:13,top:"50%",transform:"translateY(-50%)",color:"#9ab89a"}}><Ic n="search" s={15}/></div><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search officers…" style={{...inp,paddingLeft:38}}/></div>
     <div style={{...card,overflow:"hidden",overflowX:"auto"}}>
       <table style={{width:"100%",borderCollapse:"collapse",minWidth:820}}>
         <thead><tr style={{background:"#f0faf2"}}>{["Officer","Staff ID","Role","Ward","Status","Last Login","Actions"].map(h=><th key={h} style={{textAlign:"left",padding:"12px 14px",fontSize:11,color:"#4a7a58",textTransform:"uppercase",letterSpacing:"0.07em",fontWeight:700}}>{h}</th>)}</tr></thead>
@@ -723,7 +743,7 @@ export default function App(){
   const [me,setMe]               = useState(null);
   const [authReady,setAuthReady] = useState(false);
   const [dataLoading,setDataLoading] = useState(false);
-  const [Officers,setOfficers]   = useState([]);
+  const [officers,setOfficers]   = useState([]);
   const [ratepayers,setRatepayers] = useState([]);
   const [payments,setPayments]   = useState([]);
   const [toasts,setToasts]       = useState([]);
@@ -738,7 +758,7 @@ export default function App(){
   useEffect(()=>{
     const unsub=onAuthStateChanged(auth,async user=>{
       if(user){
-        try{const snap=await getDoc(doc(db,"Officers",user.uid));if(snap.exists()&&snap.data().status==="active"){setMe({id:snap.id,...snap.data()});setDataLoading(true);}else{await signOut(auth);}}
+        try{const snap=await getDoc(doc(db,"officers",user.uid));if(snap.exists()&&snap.data().status==="active"){setMe({id:snap.id,...snap.data()});setDataLoading(true);}else{await signOut(auth);}}
         catch(e){console.warn("Profile load failed:",e.message);}
       }else{setMe(null);setOfficers([]);setRatepayers([]);setPayments([]);setDataLoading(false);setSessionRemaining(null);}
       setAuthReady(true);
@@ -750,7 +770,7 @@ export default function App(){
     if(!me)return;
     const u1=onSnapshot(collection(db,"ratepayers"),snap=>{setRatepayers(snap.docs.map(d=>({id:d.id,...d.data()})));setDataLoading(false);});
     const u2=onSnapshot(query(collection(db,"payments"),orderBy("dueDate","desc")),snap=>{setPayments(snap.docs.map(d=>({id:d.id,...d.data()})));});
-    const u3=onSnapshot(collection(db,"Officers"),snap=>{setOfficers(snap.docs.map(d=>({id:d.id,...d.data()})));});
+    const u3=onSnapshot(collection(db,"officers"),snap=>{setOfficers(snap.docs.map(d=>({id:d.id,...d.data()})));});
     return()=>{u1();u2();u3();};
   },[me]);
 
@@ -791,7 +811,7 @@ export default function App(){
     {id:"iam",       icon:"shield",   label:"Officers",     perm:"iam"},
   ].filter(item=>canDo(me,item.perm));
 
-  const pp={ratepayers,payments,Officers,me,addToast,setTab};
+  const pp={ratepayers,payments,officers,me,addToast,setTab};
 
   function Sidebar(){return <div style={{display:"flex",flexDirection:"column",height:"100%"}}>
     <div style={{padding:"20px 18px 14px",borderBottom:"1px solid #e8f0e8"}}>
